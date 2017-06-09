@@ -1,2 +1,9 @@
 keepsake
 *.pem
+/bin/
+/.gopath~/
+/vendor/
+/test/tests.*
+/test/coverage.*
+.glide
+*.rpm

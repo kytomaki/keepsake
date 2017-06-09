@@ -19,20 +19,21 @@
 package main
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	vaultAPI "github.com/hashicorp/vault/api"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
-	"encoding/pem"
-	"crypto/x509"
-	log "github.com/sirupsen/logrus"
-	vaultAPI "github.com/hashicorp/vault/api"
 )
 
 const (
+	// EnvVaultToken Used to authenticate the each request
 	EnvVaultToken = "VAULT_TOKEN"
 )
 
@@ -55,7 +56,7 @@ var environmentVariables = []string{
 }
 
 func renewDuration(seconds int, renewalCoefficient float64) time.Duration {
-	return time.Duration(float64(time.Duration(seconds) * time.Second) * renewalCoefficient)
+	return time.Duration(float64(time.Duration(seconds)*time.Second) * renewalCoefficient)
 }
 
 func certDuration(certFile string, seconds int) bool {
@@ -69,6 +70,7 @@ func certDuration(certFile string, seconds int) bool {
 	if err != nil {
 		log.WithError(err).Fatal("Unable to parse cert!")
 	}
+	log.WithField("NotAfter", c.NotAfter).Info("Certificate Expire DateTime")
 	return c.NotAfter.Add(-time.Duration(seconds) * time.Second).Before(time.Now())
 }
 
@@ -174,24 +176,24 @@ func main() {
 		}
 	}()
 
-	certRenewalInterval := time.Duration(time.Duration(float64(certTTL.Seconds()) * *renewalCoefficient) * time.Second)
+	certRenewalInterval := time.Duration(time.Duration(float64(certTTL.Seconds())**renewalCoefficient) * time.Second)
 	renewal := func() {
 		if certDuration(*certFile, int(certRenewalInterval.Seconds())) {
 			pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
 			if err != nil {
 				log.WithError(err).Fatal("Unable to get keys")
 			}
-			if err := ioutil.WriteFile(*certFile, []byte(pkiSecret.Data["certificate"].(string) + "\n"), 0640); err != nil {
+			if err := ioutil.WriteFile(*certFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"), 0640); err != nil {
 				log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
 			}
-			if err := ioutil.WriteFile(*caFile, []byte(pkiSecret.Data["issuing_ca"].(string) + "\n"), 0640); err != nil {
+			if err := ioutil.WriteFile(*caFile, []byte(pkiSecret.Data["issuing_ca"].(string)+"\n"), 0640); err != nil {
 				log.WithError(err).WithField("file", *caFile).Fatal("Failed to write ca")
 			}
-			if err := ioutil.WriteFile(*keyFile, []byte(pkiSecret.Data["private_key"].(string) + "\n"), 0640); err != nil {
+			if err := ioutil.WriteFile(*keyFile, []byte(pkiSecret.Data["private_key"].(string)+"\n"), 0640); err != nil {
 				log.WithError(err).WithField("file", *keyFile).Fatal("Failed to write key")
 			}
 			if *bundleFile != "" {
-				if err := ioutil.WriteFile(*bundleFile, []byte(pkiSecret.Data["certificate"].(string) + "\n" + pkiSecret.Data["issuing_ca"].(string) + "\n"), 0640); err != nil {
+				if err := ioutil.WriteFile(*bundleFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"+pkiSecret.Data["issuing_ca"].(string)+"\n"), 0640); err != nil {
 					log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
 				}
 			}
@@ -218,8 +220,8 @@ func main() {
 		return
 	}
 	for {
-		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds()) *
-			(1.0 - *renewalCoefficient)+1) * time.Second )
+		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds())*
+			(1.0-*renewalCoefficient)+1) * time.Second)
 		time.Sleep(sleepInterval)
 		renewal()
 	}
