@@ -26,7 +26,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-
+	"encoding/pem"
+	"crypto/x509"
 	log "github.com/sirupsen/logrus"
 	vaultAPI "github.com/hashicorp/vault/api"
 )
@@ -53,8 +54,22 @@ var environmentVariables = []string{
 	vaultAPI.EnvVaultMaxRetries,
 }
 
-func renewDuration(seconds int) time.Duration {
-	return time.Duration(float64(time.Duration(seconds)*time.Second) * 0.9)
+func renewDuration(seconds int, renewalCoefficient float64) time.Duration {
+	return time.Duration(float64(time.Duration(seconds) * time.Second) * renewalCoefficient)
+}
+
+func certDuration(certFile string, seconds int) bool {
+	f, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		log.WithError(err).WithField("file", certFile).Warn("Unable to locate certfile!")
+		return true
+	}
+	block, _ := pem.Decode([]byte(f))
+	c, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		log.WithError(err).Fatal("Unable to parse cert!")
+	}
+	return c.NotAfter.Add(-time.Duration(seconds) * time.Second).Before(time.Now())
 }
 
 func main() {
@@ -69,6 +84,8 @@ func main() {
 	caFile := flag.String("caFile", "", "Output ca file")
 	bundleFile := flag.String("bundleFile", "", "Ouput a ca+cert bundle")
 	command := flag.String("cmd", "", "Command to execute")
+	runOnce := flag.Bool("once", false, "Run command once and exit.")
+	renewalCoefficient := flag.Float64("renewal", 0.9, "Float lifespan factor to renew cert.")
 	showVersion := flag.Bool("version", false, "Show version and exit")
 
 	flag.Usage = func() {
@@ -114,6 +131,10 @@ func main() {
 		vaultArgs["ttl"] = certTTL.String()
 	}
 
+	if *renewalCoefficient >= 1.0 {
+		log.Fatal("Argument `-renewal` must be less than 1.0.")
+	}
+
 	token := os.Getenv(EnvVaultToken)
 	if token == "" {
 		log.Fatal("No token found")
@@ -142,53 +163,64 @@ func main() {
 	}
 
 	go func() {
-		renewalInterval := renewDuration(secret.Auth.LeaseDuration)
+		renewalInterval := renewDuration(secret.Auth.LeaseDuration, *renewalCoefficient)
 		for {
 			time.Sleep(renewalInterval)
 			newSecret, err := vault.Auth().Token().RenewSelf(0)
 			if err != nil {
 				log.WithError(err).Fatal("Unable to renew token")
 			}
-			renewalInterval = renewDuration(newSecret.Auth.LeaseDuration)
+			renewalInterval = renewDuration(newSecret.Auth.LeaseDuration, *renewalCoefficient)
 		}
 	}()
 
-	var certRenewalInterval time.Duration
-
+	certRenewalInterval := time.Duration(time.Duration(float64(certTTL.Seconds()) * *renewalCoefficient) * time.Second)
 	renewal := func() {
-		pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
-		if err != nil {
-			log.WithError(err).Fatal("Unable to get keys")
-		}
-		if err := ioutil.WriteFile(*certFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"), 0640); err != nil {
-			log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
-		}
-		if err := ioutil.WriteFile(*caFile, []byte(pkiSecret.Data["issuing_ca"].(string)+"\n"), 0640); err != nil {
-			log.WithError(err).WithField("file", *caFile).Fatal("Failed to write ca")
-		}
-		if err := ioutil.WriteFile(*keyFile, []byte(pkiSecret.Data["private_key"].(string)+"\n"), 0640); err != nil {
-			log.WithError(err).WithField("file", *keyFile).Fatal("Failed to write key")
-		}
-		if *bundleFile != "" {
-			if err := ioutil.WriteFile(*bundleFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"+pkiSecret.Data["issuing_ca"].(string)+"\n"), 0640); err != nil {
+		if certDuration(*certFile, int(certRenewalInterval.Seconds())) {
+			pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
+			if err != nil {
+				log.WithError(err).Fatal("Unable to get keys")
+			}
+			if err := ioutil.WriteFile(*certFile, []byte(pkiSecret.Data["certificate"].(string) + "\n"), 0640); err != nil {
 				log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
 			}
-		}
-
-		certRenewalInterval = renewDuration(pkiSecret.LeaseDuration)
-
-		if *command != "" {
-			cmd := exec.Command("/bin/bash", "-c", *command)
-			err := cmd.Run()
-			if err != nil {
-				log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
+			if err := ioutil.WriteFile(*caFile, []byte(pkiSecret.Data["issuing_ca"].(string) + "\n"), 0640); err != nil {
+				log.WithError(err).WithField("file", *caFile).Fatal("Failed to write ca")
 			}
+			if err := ioutil.WriteFile(*keyFile, []byte(pkiSecret.Data["private_key"].(string) + "\n"), 0640); err != nil {
+				log.WithError(err).WithField("file", *keyFile).Fatal("Failed to write key")
+			}
+			if *bundleFile != "" {
+				if err := ioutil.WriteFile(*bundleFile, []byte(pkiSecret.Data["certificate"].(string) + "\n" + pkiSecret.Data["issuing_ca"].(string) + "\n"), 0640); err != nil {
+					log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
+				}
+			}
+
+			log.WithField("certTTL", certTTL).Info("Certificate Updated with interval.")
+			//certRenewalInterval = renewDuration(pkiSecret.LeaseDuration)
+
+			if *command != "" {
+				cmd := exec.Command("/bin/bash", "-c", *command)
+				err := cmd.Run()
+				if err != nil {
+					log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
+				}
+			}
+		} else {
+			log.Info("Cert is not ready for rotation")
 		}
 	}
+
+	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Internval of Cert")
 	renewal()
 
+	if *runOnce {
+		return
+	}
 	for {
-		time.Sleep(certRenewalInterval)
+		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds()) *
+			(1.0 - *renewalCoefficient)+1) * time.Second )
+		time.Sleep(sleepInterval)
 		renewal()
 	}
 }
