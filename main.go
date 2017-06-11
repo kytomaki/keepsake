@@ -134,7 +134,7 @@ func main() {
 	}
 
 	if *renewalCoefficient >= 1.0 {
-		log.Fatal("Argument `-renewal` must be less than 1.0.")
+		log.WithField("-renewal", renewalCoefficient).Fatal("Argument `-renewal` must be less than 1.0.")
 	}
 
 	token := os.Getenv(EnvVaultToken)
@@ -173,11 +173,12 @@ func main() {
 				log.WithError(err).Fatal("Unable to renew token")
 			}
 			renewalInterval = renewDuration(newSecret.Auth.LeaseDuration, *renewalCoefficient)
+			log.WithField("renewalInterval", renewalInterval).Info("Renewal of Token successful sleeping...")
 		}
 	}()
 
 	certRenewalInterval := time.Duration(time.Duration(float64(certTTL.Seconds())**renewalCoefficient) * time.Second)
-	renewal := func() {
+	renewal := func() string {
 		if certDuration(*certFile, int(certRenewalInterval.Seconds())) {
 			pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
 			if err != nil {
@@ -208,21 +209,22 @@ func main() {
 					log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
 				}
 			}
-		} else {
-			log.Info("Cert is not ready for rotation")
+			return "\nchanged=true comment='certificates and key updated'"
 		}
+		return "\nchanged=no comment='no change required due to TTL'"
 	}
 
 	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Internval of Cert")
-	renewal()
+	result := renewal()
 
 	if *runOnce {
+		println(result)
 		return
 	}
 	for {
 		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds())*
 			(1.0-*renewalCoefficient)+1) * time.Second)
 		time.Sleep(sleepInterval)
-		renewal()
+		result = renewal()
 	}
 }

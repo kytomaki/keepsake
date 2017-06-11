@@ -126,6 +126,7 @@ amzn:
 clean: ; $(info $(M) cleaning…)	@ ## Cleanup everything
 	@rm -rf $(GOPATH)
 	@rm -rf bin
+	@rm -rf vendor
 	@rm -rf test/tests.* test/coverage.*
 	@rm -rf keepsake-*.rpm
 
