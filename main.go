@@ -192,25 +192,40 @@ func main() {
 	certRenewalInterval := time.Duration(time.Duration(float64(certTTL.Seconds())**renewalCoefficient) * time.Second)
 	renewal := func() string {
 		if *certFile == "" {
-			b, err := ioutil.ReadFile(*pemFile)
-			if err != nil {
-				log.WithError(err).WithField("file", *pemFile).Fatal("Failed to read pem file")
-			}
-			pem := openssl.SplitPEM(b)
-			if certDurationPlain((string(pem[0])), int(certRenewalInterval.Seconds())) {
-
+			if _, err := os.Stat(*pemFile); os.IsNotExist(err) {
+				fmt.Fprintln(os.Stderr, "\nPem file doesn't exist, ignoring TTL and creating one")
 				pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
 
 				if err != nil {
 					log.WithError(err).Fatal("unable to write to vault")
 				}
-				if *pemFile != "" {
-					if err := ioutil.WriteFile(*pemFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"+pkiSecret.Data["issuing_ca"].(string)+"\n"+pkiSecret.Data["private_key"].(string)+"\n"), 0640); err != nil {
-						log.WithError(err).WithField("file", *pemFile).Fatal("Failed to write pem file")
-					}
+
+				if err := ioutil.WriteFile(*pemFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"+pkiSecret.Data["issuing_ca"].(string)+"\n"+pkiSecret.Data["private_key"].(string)+"\n"), 0640); err != nil {
+					log.WithError(err).WithField("file", *pemFile).Fatal("Failed to write pem file")
 				}
+
 			} else {
-				return "\nchanged=no comment='no change required due to TTL'"
+
+				b, err := ioutil.ReadFile(*pemFile)
+				if err != nil {
+					log.WithError(err).WithField("file", *pemFile).Fatal("Failed to read pem file")
+				}
+				pem := openssl.SplitPEM(b)
+				if certDurationPlain((string(pem[0])), int(certRenewalInterval.Seconds())) {
+
+					pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
+
+					if err != nil {
+						log.WithError(err).Fatal("unable to write to vault")
+					}
+					if *pemFile != "" {
+						if err := ioutil.WriteFile(*pemFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"+pkiSecret.Data["issuing_ca"].(string)+"\n"+pkiSecret.Data["private_key"].(string)+"\n"), 0640); err != nil {
+							log.WithError(err).WithField("file", *pemFile).Fatal("Failed to write pem file")
+						}
+					}
+				} else {
+					return "\nchanged=no comment='no change required due to TTL'"
+				}
 			}
 
 		} else {
