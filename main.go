@@ -25,6 +25,7 @@ import (
 	"fmt"
 	vaultAPI "github.com/hashicorp/vault/api"
 	log "github.com/sirupsen/logrus"
+	openssl "github.com/spacemonkeygo/openssl"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -59,19 +60,30 @@ func renewDuration(seconds int, renewalCoefficient float64) time.Duration {
 	return time.Duration(float64(time.Duration(seconds)*time.Second) * renewalCoefficient)
 }
 
-func certDuration(certFile string, seconds int) bool {
-	f, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		log.WithError(err).WithField("file", certFile).Warn("Unable to locate certfile!")
-		return true
+func checkCertExpiration(certFile string, pemFile string, seconds int) bool {
+	if pemFile == "" {
+		f, err := ioutil.ReadFile(certFile)
+		if err != nil {
+			log.WithError(err).WithField("file", certFile).Warn("Unable to locate certfile!")
+			return true
+		}
+		block, _ := pem.Decode([]byte(f))
+		c, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			log.WithError(err).Fatal("Unable to parse cert!")
+		}
+		log.WithField("NotAfter", c.NotAfter).Info("Certificate Expire DateTime")
+		return c.NotAfter.Add(-time.Duration(seconds) * time.Second).Before(time.Now())
 	}
-	block, _ := pem.Decode([]byte(f))
+
+	block, _ := pem.Decode([]byte(pemFile))
 	c, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		log.WithError(err).Fatal("Unable to parse cert!")
 	}
 	log.WithField("NotAfter", c.NotAfter).Info("Certificate Expire DateTime")
 	return c.NotAfter.Add(-time.Duration(seconds) * time.Second).Before(time.Now())
+
 }
 
 func main() {
@@ -84,6 +96,7 @@ func main() {
 	certFile := flag.String("certFile", "", "Output certificate file")
 	keyFile := flag.String("keyFile", "", "Output key file")
 	caFile := flag.String("caFile", "", "Output ca file")
+	pemFile := flag.String("pemFile", "", "Output ca in pem file")
 	bundleFile := flag.String("bundleFile", "", "Ouput a ca+cert bundle")
 	command := flag.String("cmd", "", "Command to execute")
 	runOnce := flag.Bool("once", false, "Run command once and exit.")
@@ -114,7 +127,7 @@ func main() {
 		return
 	}
 
-	if *certCN == "" || *certFile == "" || *keyFile == "" || *caFile == "" {
+	if !(*certCN != "" && *certFile == "" && *keyFile == "" && *caFile == "" && *pemFile != "") || (*certCN != "" && *certFile != "" && *keyFile != "" && *caFile != "" && *pemFile == "") {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -178,12 +191,44 @@ func main() {
 	}()
 
 	certRenewalInterval := time.Duration(time.Duration(float64(certTTL.Seconds())**renewalCoefficient) * time.Second)
-	renewal := func() string {
-		if certDuration(*certFile, int(certRenewalInterval.Seconds())) {
-			pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
-			if err != nil {
-				log.WithError(err).Fatal("Unable to get keys")
+
+	pemFormat := *certFile == ""
+
+	possibleRenew := func() bool {
+		var needsRenewal bool
+
+		if pemFormat {
+			if _, err := os.Stat(*pemFile); os.IsNotExist(err) {
+				fmt.Fprintln(os.Stderr, "\nPem file doesn't exist, ignoring TTL and creating one")
+				needsRenewal = true
+			} else {
+				b, err := ioutil.ReadFile(*pemFile)
+				if err != nil {
+					log.WithError(err).WithField("file", *pemFile).Fatal("Failed to read pem file")
+				}
+				pem := openssl.SplitPEM(b)
+				needsRenewal = checkCertExpiration(*certFile, (string(pem[0])), int(certRenewalInterval.Seconds()))
 			}
+		} else {
+			needsRenewal = checkCertExpiration(*certFile, *pemFile, int(certRenewalInterval.Seconds()))
+		}
+
+		if !needsRenewal {
+			fmt.Fprintln(os.Stderr, "\nNo change required due to TTL")
+			return false
+		}
+
+		pkiSecret, err := vault.Logical().Write(vaultPath, vaultArgs)
+
+		if err != nil {
+			log.WithError(err).Fatal("unable to write to vault")
+		}
+
+		if pemFormat {
+			if err := ioutil.WriteFile(*pemFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"+pkiSecret.Data["issuing_ca"].(string)+"\n"+pkiSecret.Data["private_key"].(string)+"\n"), 0640); err != nil {
+				log.WithError(err).WithField("file", *pemFile).Fatal("Failed to write pem file")
+			}
+		} else {
 			if err := ioutil.WriteFile(*certFile, []byte(pkiSecret.Data["certificate"].(string)+"\n"), 0640); err != nil {
 				log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
 			}
@@ -198,33 +243,34 @@ func main() {
 					log.WithError(err).WithField("file", *certFile).Fatal("Failed to write certificate")
 				}
 			}
-
-			log.WithField("certTTL", certTTL).Info("Certificate Updated with interval.")
-			//certRenewalInterval = renewDuration(pkiSecret.LeaseDuration)
-
-			if *command != "" {
-				cmd := exec.Command("/bin/bash", "-c", *command)
-				err := cmd.Run()
-				if err != nil {
-					log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
-				}
-			}
-			return "\nchanged=true comment='certificates and key updated'"
 		}
-		return "\nchanged=no comment='no change required due to TTL'"
+		if *command != "" {
+			cmd := exec.Command("/bin/bash", "-c", *command)
+			err := cmd.Run()
+			if err != nil {
+				log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
+			}
+		}
+		fmt.Fprintln(os.Stderr, "\nCertificates and key updated")
+		return true
 	}
 
 	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Internval of Cert")
-	result := renewal()
 
+	result := possibleRenew()
 	if *runOnce {
-		println(result)
+		if result == true {
+			println("\nchanged=true comment='certificates and key updated'")
+		} else {
+			println("\nchanged=no comment='no change required due to TTL'")
+		}
 		return
 	}
 	for {
 		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds())*
 			(1.0-*renewalCoefficient)+1) * time.Second)
 		time.Sleep(sleepInterval)
-		result = renewal()
+		result = possibleRenew()
 	}
+
 }
