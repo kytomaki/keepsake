@@ -127,7 +127,7 @@ func main() {
 		return
 	}
 
-	if !(*certCN != "" && *certFile == "" && *keyFile == "" && *caFile == "" && *pemFile != "") || (*certCN != "" && *certFile != "" && *keyFile != "" && *caFile != "" && *pemFile == "") {
+	if !(*certCN != "" && *certFile == "" && *keyFile == "" && *caFile == "" && *pemFile != "") || !(*certCN != "" && *certFile != "" && *keyFile != "" && *caFile != "" && *pemFile == "") {
 		flag.Usage()
 		os.Exit(1)
 	}
