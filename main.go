@@ -126,17 +126,16 @@ func main() {
 		fmt.Println("https://github.com/freman/keepsake")
 		return
 	}
-	if (*certCN == ""){
+	if *certCN == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	if !( ((*pemFile != "") && (*certFile == "" && *keyFile == "" && *caFile == "" )) || ((*pemFile == "") && (*certFile != "" && *keyFile != "" && *caFile != "" ))){
+	if !(((*pemFile != "") && (*certFile == "" && *keyFile == "" && *caFile == "")) || ((*pemFile == "") && (*certFile != "" && *keyFile != "" && *caFile != ""))) {
 		fmt.Print("1")
 		flag.Usage()
 		os.Exit(1)
 	}
-
 
 	vaultPath := fmt.Sprintf("%s/issue/%s", *vaultPKIPath, *vaultRole)
 	vaultArgs := map[string]interface{}{
