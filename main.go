@@ -39,8 +39,9 @@ const (
 )
 
 var (
-	version = "Undefined"
-	commit  = "Undefined"
+	version   = "Undefined"
+	buildDate = "Undefined"
+	commit    = "Undefined"
 )
 
 var environmentVariables = []string{
@@ -123,6 +124,7 @@ func main() {
 
 	if *showVersion {
 		fmt.Printf("keepsake - %s (%s)\n", version, commit)
+		fmt.Printf("built: %s \n", buildDate)
 		fmt.Println("https://github.com/freman/keepsake")
 		return
 	}

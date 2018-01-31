@@ -1,7 +1,8 @@
 PACKAGE  = keepsake
 DATE    ?= $(shell date +%FT%T%z)
-VERSION ?= $(shell git describe --tags --always --dirty --match=v* 2> /dev/null || \
+VERSION ?= $(shell git describe --tags --always --dirty 2> /dev/null || \
 			cat $(CURDIR)/.version 2> /dev/null || echo v0)
+COMMIT  := $(shell git log --pretty=format:'%h' -n 1)
 GOPATH   = $(CURDIR)/.gopath~
 BIN      = $(GOPATH)/bin
 BASE     = $(GOPATH)/src/$(PACKAGE)
@@ -22,7 +23,7 @@ M = $(shell printf "\033[34;1m▶\033[0m")
 all: fmt lint vendor | $(BASE) ; $(info $(M) building executable…) @ ## Build program binary
 	$Q cd $(BASE) && $(GO) build \
 		-tags release \
-		-ldflags '-X $(PACKAGE)/cmd.Version=$(VERSION) -X $(PACKAGE)/cmd.BuildDate=$(DATE)' \
+		-ldflags '-X main.version=$(VERSION) -X main.buildDate=$(DATE) -X main.commit=$(COMMIT)' \
 		-o bin/$(PACKAGE) main.go
 
 $(BASE): ; $(info $(M) setting GOPATH…)
