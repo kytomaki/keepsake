@@ -206,7 +206,7 @@ func main() {
 
 		if pemFormat {
 			if _, err := os.Stat(*pemFile); os.IsNotExist(err) {
-				fmt.Fprintln(os.Stderr, "\nPem file doesn't exist, ignoring TTL and creating one")
+				log.Info("Pem file doesn't exist, ignoring TTL and creating one")
 				needsRenewal = true
 			} else {
 				b, err := ioutil.ReadFile(*pemFile)
@@ -221,7 +221,7 @@ func main() {
 		}
 
 		if !needsRenewal {
-			fmt.Fprintln(os.Stderr, "\nNo change required due to TTL")
+			log.Info("No change required due to TTL")
 			return false
 		}
 
@@ -258,7 +258,7 @@ func main() {
 				log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
 			}
 		}
-		fmt.Fprintln(os.Stderr, "\nCertificates and key updated")
+		log.Info("Certificates and key updated")
 		return true
 	}
 
@@ -266,11 +266,13 @@ func main() {
 
 	result := possibleRenew()
 	if *runOnce {
+		var comment string
 		if result == true {
-			println("\nchanged=true comment='certificates and key updated'")
+			comment = "certificates and key updated"
 		} else {
-			println("\nchanged=no comment='no change required due to TTL'")
+			comment = "no change required due to TTL"
 		}
+		log.WithFields(log.Fields{"changed": result}).Info(comment)
 		return
 	}
 	for {
