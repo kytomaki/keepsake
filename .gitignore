@@ -7,3 +7,4 @@ keepsake
 /test/coverage.*
 .glide
 *.rpm
+docker/Dockerfile
