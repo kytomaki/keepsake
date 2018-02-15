@@ -1,13 +1,16 @@
 PACKAGE  = keepsake
 DATE    ?= $(shell date +%FT%T%z)
-VERSION ?= $(shell git describe --tags --always --dirty --match=v* 2> /dev/null || \
+VERSION ?= $(shell git describe --tags --always --dirty 2> /dev/null || \
 			cat $(CURDIR)/.version 2> /dev/null || echo v0)
+COMMIT  := $(shell git log --pretty=format:'%h' -n 1)
 GOPATH   = $(CURDIR)/.gopath~
 BIN      = $(GOPATH)/bin
 BASE     = $(GOPATH)/src/$(PACKAGE)
 PKGS     = $(or $(PKG),$(shell cd $(BASE) && env GOPATH=$(GOPATH) $(GO) list ./... | grep -v "github"| grep -v "golang.org"))
 TESTPKGS = $(shell env GOPATH=$(GOPATH) $(GO) list -f '{{ if or .TestGoFiles .XTestGoFiles }}{{ .ImportPath }}{{ end }}' $(PKGS))
 
+AMAZONLINUX_VERSION := 2017.09
+GLIDE_VERSION := v0.13.1
 
 GO      = go
 GODOC   = godoc
@@ -22,7 +25,7 @@ M = $(shell printf "\033[34;1m▶\033[0m")
 all: fmt lint vendor | $(BASE) ; $(info $(M) building executable…) @ ## Build program binary
 	$Q cd $(BASE) && $(GO) build \
 		-tags release \
-		-ldflags '-X $(PACKAGE)/cmd.Version=$(VERSION) -X $(PACKAGE)/cmd.BuildDate=$(DATE)' \
+		-ldflags '-X main.version=$(VERSION) -X main.buildDate=$(DATE) -X main.commit=$(COMMIT)' \
 		-o bin/$(PACKAGE) main.go
 
 $(BASE): ; $(info $(M) setting GOPATH…)
@@ -118,8 +121,16 @@ package: clean fmt lint vendor all
 	fpm -s dir -t rpm -n $(PACKAGE) -v $(VERSION) --prefix /usr/local bin/keepsake
 
 .PHONY: amzn
-amzn:
-	docker run -v `pwd`:/rpmbuild -t amazonlinux:2017.03-Development bash -c ' make -C /rpmbuild package'
+amzn: docker/Dockerfile
+	docker run -v `pwd`:/rpmbuild -t amazonlinux:$(AMAZONLINUX_VERSION)-Development bash -c ' make -C /rpmbuild package'
+
+docker/Dockerfile: Dockerfile.template docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
+	sed \
+		-e 's|@AMAZONLINUX_VERSION@|$(AMAZONLINUX_VERSION)|g' \
+		-e 's|@GLIDE_VERSION@|$(GLIDE_VERSION)|g' \
+		$< > $@
+	docker build -t amazonlinux:$(AMAZONLINUX_VERSION)-Development docker || \
+		(rm -f $@ && exit 1)
 # Misc
 
 .PHONY: clean

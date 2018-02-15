@@ -2,3 +2,4 @@ package: keepsake
 import:
 - package: "github.com/hashicorp/vault/api"
 - package: "github.com/sirupsen/logrus"
+- package: "github.com/spacemonkeygo/openssl"
