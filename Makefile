@@ -122,7 +122,11 @@ package: clean fmt lint vendor all
 
 .PHONY: amzn
 amzn: docker/Dockerfile
-	docker run -v `pwd`:/rpmbuild -t amazonlinux:$(AMAZONLINUX_VERSION)-Development bash -c ' make -C /rpmbuild package'
+	docker run \
+		-v $(shell pwd):/rpmbuild \
+		-t \
+		amazonlinux:$(AMAZONLINUX_VERSION)-Development \
+		bash -c ' make -C /rpmbuild package'
 
 docker/Dockerfile: Dockerfile.template docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
 	sed \
