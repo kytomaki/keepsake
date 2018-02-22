@@ -103,6 +103,7 @@ func main() {
 	runOnce := flag.Bool("once", false, "Run command once and exit.")
 	renewalCoefficient := flag.Float64("renewal", 0.9, "Float lifespan factor to renew cert.")
 	showVersion := flag.Bool("version", false, "Show version and exit")
+	jsonOutput := flag.Bool("json", false, "Output in json")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n\n", os.Args[0])
@@ -128,6 +129,11 @@ func main() {
 		fmt.Println("https://github.com/freman/keepsake")
 		return
 	}
+
+	if *jsonOutput {
+		log.SetFormatter(&log.JSONFormatter{})
+	}
+
 	if *certCN == "" {
 		flag.Usage()
 		os.Exit(1)
