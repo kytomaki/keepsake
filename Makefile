@@ -13,7 +13,8 @@ AMAZONLINUX_VERSION := 2017.09
 GLIDE_VERSION := v0.13.1
 PID := $$$$
 
-RPM_PACKAGE := $(PACKAGE)-$(VERSION).x86_64.rpm
+RPM_VERSION := $(strip $(subst -,_, $(VERSION)))
+RPM_PACKAGE := $(PACKAGE)-$(RPM_VERSION).x86_64.rpm
 
 GO      = go
 GODOC   = godoc
@@ -124,7 +125,7 @@ package: clean fmt lint vendor all
 		-s dir \
 		-t rpm \
 		-n $(PACKAGE) \
-		-v $(VERSION) \
+		-v $(RPM_VERSION) \
 		--prefix /usr/local \
 		--package $(RPM_PACKAGE) \
 		bin/keepsake
