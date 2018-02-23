@@ -11,6 +11,9 @@ TESTPKGS = $(shell env GOPATH=$(GOPATH) $(GO) list -f '{{ if or .TestGoFiles .XT
 
 AMAZONLINUX_VERSION := 2017.09
 GLIDE_VERSION := v0.13.1
+PID := $$$$
+
+RPM_PACKAGE := $(PACKAGE)-$(VERSION).x86_64.rpm
 
 GO      = go
 GODOC   = godoc
@@ -117,23 +120,33 @@ vendor: glide.lock | $(BASE) ; $(info $(M) retrieving dependencies…)
 # Packaging
 .PHONY: package
 package: clean fmt lint vendor all
-	cd /rpmbuild
-	fpm -s dir -t rpm -n $(PACKAGE) -v $(VERSION) --prefix /usr/local bin/keepsake
+	fpm \
+		-s dir \
+		-t rpm \
+		-n $(PACKAGE) \
+		-v $(VERSION) \
+		--prefix /usr/local \
+		--package $(RPM_PACKAGE) \
+		bin/keepsake
 
 .PHONY: amzn
-amzn: docker/Dockerfile
-	docker run \
-		-v $(shell pwd):/rpmbuild \
-		-t \
-		amazonlinux:$(AMAZONLINUX_VERSION)-Development \
-		bash -c ' make -C /rpmbuild package'
+amzn: $(RPM_PACKAGE)
 
-docker/Dockerfile: Dockerfile.template docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
+$(RPM_PACKAGE): Dockerfile
+	docker run \
+		--name $(AMAZONLINUX_VERSION)-Developmen-$(PID) \
+		amazonlinux:$(AMAZONLINUX_VERSION)-Development \
+		true && \
+	docker cp $(AMAZONLINUX_VERSION)-Developmen-$(PID):/rpmbuild/$(RPM_PACKAGE) . && \
+	docker rm -f $(AMAZONLINUX_VERSION)-Developmen-$(PID)
+	@touch $@
+
+Dockerfile: Dockerfile.template glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
 	sed \
 		-e 's|@AMAZONLINUX_VERSION@|$(AMAZONLINUX_VERSION)|g' \
 		-e 's|@GLIDE_VERSION@|$(GLIDE_VERSION)|g' \
 		$< > $@
-	docker build -t amazonlinux:$(AMAZONLINUX_VERSION)-Development docker || \
+	docker build -t amazonlinux:$(AMAZONLINUX_VERSION)-Development . || \
 		(rm -f $@ && exit 1)
 # Misc
 
@@ -144,6 +157,7 @@ clean: ; $(info $(M) cleaning…)	@ ## Cleanup everything
 	@rm -rf vendor
 	@rm -rf test/tests.* test/coverage.*
 	@rm -rf keepsake-*.rpm
+	@rm -f Dockerfile
 
 .PHONY: help
 help:

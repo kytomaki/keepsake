@@ -31,4 +31,10 @@ RUN cd tmp && \
       rm -rf glide-@GLIDE_VERSION@-linux-amd64.tar.gz linux-amd64 && \
       chown root:root /usr/bin/glide
 
+RUN mkdir -p /rpmbuild/
+
+COPY . /rpmbuild/
+
+RUN make package -C /rpmbuild
+
 # vim: set ft=Dockerfile:
