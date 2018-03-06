@@ -1,0 +1,9 @@
+---
+version: '2'
+services:
+  amzn:
+    build:
+      context: docker
+      dockerfile: Dockerfile_amzn
+    volumes:
+      - "./:/rpmbuild/"

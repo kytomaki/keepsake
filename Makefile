@@ -121,15 +121,18 @@ package: clean fmt lint vendor all
 	fpm -s dir -t rpm -n $(PACKAGE) -v $(VERSION) --prefix /usr/local bin/keepsake
 
 .PHONY: amzn
-amzn: docker/Dockerfile
-	docker run -v `pwd`:/rpmbuild -t amazonlinux:$(AMAZONLINUX_VERSION)-Development bash -c ' make -C /rpmbuild package'
+amzn: docker/Dockerfile_amzn
+	docker-compose run amzn bash -c 'make -C /rpmbuild package'
 
-docker/Dockerfile: Dockerfile.template docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
+# Addtional dependencies needed for building docker image
+docker/Dockerfile_amzn: docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
+
+docker/Dockerfile_%: Dockerfile_%.template docker-compose.yml
 	sed \
 		-e 's|@AMAZONLINUX_VERSION@|$(AMAZONLINUX_VERSION)|g' \
 		-e 's|@GLIDE_VERSION@|$(GLIDE_VERSION)|g' \
 		$< > $@
-	docker build -t amazonlinux:$(AMAZONLINUX_VERSION)-Development docker || \
+	docker-compose build $*|| \
 		(rm -f $@ && exit 1)
 # Misc
 
