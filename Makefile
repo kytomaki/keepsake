@@ -127,6 +127,8 @@ amzn: docker/Dockerfile_amzn
 # Addtional dependencies needed for building docker image
 docker/Dockerfile_amzn: docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
 
+docker/Dockerfile_vault: docker/generate-vault-ca.sh
+
 docker/Dockerfile_%: Dockerfile_%.template docker-compose.yml
 	sed \
 		-e 's|@AMAZONLINUX_VERSION@|$(AMAZONLINUX_VERSION)|g' \
