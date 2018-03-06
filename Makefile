@@ -136,6 +136,16 @@ docker/Dockerfile_%: Dockerfile_%.template docker-compose.yml
 		$< > $@
 	docker-compose build $*|| \
 		(rm -f $@ && exit 1)
+
+# Clean up docker-compose related clutter
+.PHONY: docker-clean
+docker-clean:
+	-docker-compose down \
+		--rmi all \
+		--volumes \
+		--remove-orphans
+	-rm -f docker/Dockerfile_*
+
 # Misc
 
 .PHONY: clean
