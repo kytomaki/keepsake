@@ -146,6 +146,24 @@ docker-clean:
 		--remove-orphans
 	-rm -f docker/Dockerfile_*
 
+.PHONY: integration-test
+integration-test: all
+	bin/keepsake \
+		-cn keepsake.com \
+		-certFile keepsake.crt \
+		-keyFile keepsake.key \
+		-caFile keepsake.ca \
+		-vault-role keepsake \
+		-cmd 'echo updated' \
+		-certTTL=1m \
+		-once
+
+.PHONY: docker-integration-test
+docker-integration-test: docker/Dockerfile_amzn docker/Dockerfile_vault
+	docker-compose up -d vault
+	docker-compose exec vault sh /generate-vault-ca.sh
+	docker-compose run amzn bash -c 'make -C /rpmbuild integration-test'
+
 # Misc
 
 .PHONY: clean

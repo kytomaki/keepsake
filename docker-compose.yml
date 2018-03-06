@@ -7,6 +7,9 @@ services:
       dockerfile: Dockerfile_amzn
     volumes:
       - "./:/rpmbuild/"
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=keepsake-vault-client
   vault:
     build:
       context: docker
