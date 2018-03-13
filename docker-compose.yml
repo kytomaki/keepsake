@@ -1,0 +1,20 @@
+---
+version: '2'
+services:
+  amzn:
+    build:
+      context: docker
+      dockerfile: Dockerfile_amzn
+    volumes:
+      - "./:/rpmbuild/"
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=keepsake-vault-client
+  vault:
+    build:
+      context: docker
+      dockerfile: Dockerfile_vault
+    environment:
+      - SKIP_SETCAP=true
+      - VAULT_ADDR=http://127.0.0.1:8200
+      - VAULT_DEV_ROOT_TOKEN_ID=keepsake-test
