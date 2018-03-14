@@ -268,7 +268,7 @@ func main() {
 		return true
 	}
 
-	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Internval of Cert")
+	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Interval of Cert")
 
 	possibleRenew()
 	if *runOnce {
