@@ -270,15 +270,8 @@ func main() {
 
 	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Internval of Cert")
 
-	result := possibleRenew()
+	possibleRenew()
 	if *runOnce {
-		var comment string
-		if result == true {
-			comment = "certificates and key updated"
-		} else {
-			comment = "no change required due to TTL"
-		}
-		log.WithFields(log.Fields{"changed": result}).Info(comment)
 		return
 	}
 	for {
