@@ -258,6 +258,7 @@ func main() {
 			}
 		}
 		if *command != "" {
+			log.WithField("command", *command).Info("Running update command")
 			cmd := exec.Command("/bin/bash", "-c", *command)
 			err := cmd.Run()
 			if err != nil {
