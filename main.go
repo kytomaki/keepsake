@@ -284,6 +284,7 @@ func main() {
 	for {
 		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds())*
 			(1.0-*renewalCoefficient)+1) * time.Second)
+		log.WithFields(log.Fields{"sleep": sleepInterval}).Info("Sleeping")
 		time.Sleep(sleepInterval)
 		result = possibleRenew()
 	}
