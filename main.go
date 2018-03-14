@@ -192,13 +192,14 @@ func main() {
 	go func() {
 		renewalInterval := renewDuration(secret.Auth.LeaseDuration, *renewalCoefficient)
 		for {
+			log.WithField("duration", renewalInterval).Info("Sleeping until Vault Token Renewal")
 			time.Sleep(renewalInterval)
 			newSecret, err := vault.Auth().Token().RenewSelf(0)
 			if err != nil {
 				log.WithError(err).Fatal("Unable to renew token")
 			}
 			renewalInterval = renewDuration(newSecret.Auth.LeaseDuration, *renewalCoefficient)
-			log.WithField("renewalInterval", renewalInterval).Info("Renewal of Token successful sleeping...")
+			log.Info("Vault Token renewed")
 		}
 	}()
 
