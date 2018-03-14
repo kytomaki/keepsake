@@ -259,7 +259,7 @@ func main() {
 		}
 		if *command != "" {
 			log.WithField("command", *command).Info("Running update command")
-			cmd := exec.Command("/bin/bash", "-c", *command)
+			cmd := exec.Command("/bin/bash", "-c", *command) // #nosec
 			err := cmd.Run()
 			if err != nil {
 				log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
