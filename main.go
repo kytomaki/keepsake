@@ -140,7 +140,6 @@ func main() {
 	}
 
 	if !(((*pemFile != "") && (*certFile == "" && *keyFile == "" && *caFile == "")) || ((*pemFile == "") && (*certFile != "" && *keyFile != "" && *caFile != ""))) {
-		fmt.Print("1")
 		flag.Usage()
 		os.Exit(1)
 	}
