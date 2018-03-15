@@ -140,7 +140,6 @@ func main() {
 	}
 
 	if !(((*pemFile != "") && (*certFile == "" && *keyFile == "" && *caFile == "")) || ((*pemFile == "") && (*certFile != "" && *keyFile != "" && *caFile != ""))) {
-		fmt.Print("1")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -193,13 +192,14 @@ func main() {
 	go func() {
 		renewalInterval := renewDuration(secret.Auth.LeaseDuration, *renewalCoefficient)
 		for {
+			log.WithField("duration", renewalInterval).Info("Sleeping until Vault Token Renewal")
 			time.Sleep(renewalInterval)
 			newSecret, err := vault.Auth().Token().RenewSelf(0)
 			if err != nil {
 				log.WithError(err).Fatal("Unable to renew token")
 			}
 			renewalInterval = renewDuration(newSecret.Auth.LeaseDuration, *renewalCoefficient)
-			log.WithField("renewalInterval", renewalInterval).Info("Renewal of Token successful sleeping...")
+			log.Info("Vault Token renewed")
 		}
 	}()
 
@@ -258,7 +258,8 @@ func main() {
 			}
 		}
 		if *command != "" {
-			cmd := exec.Command("/bin/bash", "-c", *command)
+			log.WithField("command", *command).Info("Running update command")
+			cmd := exec.Command("/bin/bash", "-c", *command) // #nosec
 			err := cmd.Run()
 			if err != nil {
 				log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
@@ -268,24 +269,18 @@ func main() {
 		return true
 	}
 
-	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Internval of Cert")
+	log.WithField("certRenewalInterval", certRenewalInterval).Info("Renewal Interval of Cert")
 
-	result := possibleRenew()
+	possibleRenew()
 	if *runOnce {
-		var comment string
-		if result == true {
-			comment = "certificates and key updated"
-		} else {
-			comment = "no change required due to TTL"
-		}
-		log.WithFields(log.Fields{"changed": result}).Info(comment)
 		return
 	}
 	for {
 		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds())*
 			(1.0-*renewalCoefficient)+1) * time.Second)
+		log.WithFields(log.Fields{"sleep": sleepInterval}).Info("Sleeping")
 		time.Sleep(sleepInterval)
-		result = possibleRenew()
+		possibleRenew()
 	}
 
 }
