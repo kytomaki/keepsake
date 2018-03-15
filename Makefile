@@ -161,7 +161,7 @@ integration-test: all
 .PHONY: docker-integration-test
 docker-integration-test: docker/Dockerfile_amzn docker/Dockerfile_vault
 	docker-compose up -d vault
-	docker-compose exec vault sh /generate-vault-ca.sh
+	docker-compose exec -T vault sh /generate-vault-ca.sh
 	docker-compose run amzn bash -c 'make -C /rpmbuild integration-test'
 
 # Misc
