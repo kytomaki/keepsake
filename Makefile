@@ -156,6 +156,7 @@ integration-test: all
 		-vault-role keepsake \
 		-cmd 'echo updated' \
 		-certTTL=1m \
+		-json \
 		-once
 
 .PHONY: docker-integration-test
