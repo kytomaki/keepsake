@@ -131,7 +131,12 @@ func main() {
 	}
 
 	if *jsonOutput {
-		log.SetFormatter(&log.JSONFormatter{})
+		// Create a logstash compatible formatter
+		formatter := &log.JSONFormatter{
+			FieldMap: log.FieldMap{
+				log.FieldKeyTime: "@timestamp",
+			}}
+		log.SetFormatter(formatter)
 	}
 
 	if *certCN == "" {
