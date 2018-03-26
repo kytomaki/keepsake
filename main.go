@@ -266,10 +266,20 @@ func main() {
 		if *command != "" {
 			log.WithField("command", *command).Info("Running update command")
 			cmd := exec.Command("/bin/bash", "-c", *command) // #nosec
-			err := cmd.Run()
+			boutput, err := cmd.CombinedOutput()
+			output := string(boutput)
 			if err != nil {
-				log.WithError(err).WithField("cmd", cmd).Fatal("Unable to run cmd")
+				log.WithError(err).WithFields(log.Fields{
+					"cmd":     cmd,
+					"command": *command,
+					"output":  output}).Fatal("Unable to run cmd")
+			} else {
+				log.WithFields(log.Fields{
+					"command": *command,
+					"output":  output,
+				}).Info("Command ran succesfully")
 			}
+
 		}
 		log.Info("Certificates and key updated")
 		return true
