@@ -135,6 +135,7 @@ func main() {
 		formatter := &log.JSONFormatter{
 			FieldMap: log.FieldMap{
 				log.FieldKeyTime: "@timestamp",
+				log.FieldKeyMsg:  "@message",
 			}}
 		log.SetFormatter(formatter)
 	}
@@ -283,7 +284,7 @@ func main() {
 	for {
 		sleepInterval := time.Duration(time.Duration(float64(certTTL.Seconds())*
 			(1.0-*renewalCoefficient)+1) * time.Second)
-		log.WithFields(log.Fields{"sleep": sleepInterval}).Info("Sleeping")
+		log.WithFields(log.Fields{"duration": sleepInterval}).Info("Sleeping until next update of certificate")
 		time.Sleep(sleepInterval)
 		possibleRenew()
 	}
