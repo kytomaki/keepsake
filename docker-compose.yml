@@ -6,7 +6,7 @@ services:
       context: docker
       dockerfile: Dockerfile_amzn
     volumes:
-      - "./:/rpmbuild/"
+      - "./:/root/go/src/keepsake"
     environment:
       - VAULT_ADDR=http://vault:8200
       - VAULT_TOKEN=keepsake-vault-client
