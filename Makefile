@@ -10,12 +10,10 @@ PKGS     = $(or $(PKG),$(shell cd $(BASE) && env GOPATH=$(GOPATH) $(GO) list ./.
 TESTPKGS = $(shell env GOPATH=$(GOPATH) $(GO) list -f '{{ if or .TestGoFiles .XTestGoFiles }}{{ .ImportPath }}{{ end }}' $(PKGS))
 
 AMAZONLINUX_VERSION := 2017.09
-GLIDE_VERSION := v0.13.1
 
 GO      = go
 GODOC   = godoc
 GOFMT   = gofmt
-GLIDE   = glide
 TIMEOUT = 15
 V = 0
 Q = $(if $(filter 1,$V),,@)
@@ -106,11 +104,11 @@ fmt: ; $(info $(M) running gofmt…) @ ## Run gofmt on all source files
 
 # Dependency management
 
-glide.lock: glide.yaml | $(BASE) ; $(info $(M) updating dependencies…)
-	$Q cd $(BASE) && $(GLIDE) update
+Gopkg.lock: Gopkg.toml | $(BASE) ; $(info $(M) updating dependencies…)
+	$Q cd $(BASE) && dep ensure -update
 	@touch $@
-vendor: glide.lock | $(BASE) ; $(info $(M) retrieving dependencies…)
-	$Q cd $(BASE) && $(GLIDE) --quiet install
+vendor: Gopkg.lock | $(BASE) ; $(info $(M) retrieving dependencies…)
+	$Q cd $(BASE) && dep ensure
 	@ln -sf . vendor/src
 	@touch $@
 
@@ -125,14 +123,13 @@ amzn: docker/Dockerfile_amzn
 	docker-compose run amzn bash -c 'make -C /rpmbuild package'
 
 # Addtional dependencies needed for building docker image
-docker/Dockerfile_amzn: docker/glide-$(GLIDE_VERSION)-linux-amd64.tar.gz.sha256sum
+docker/Dockerfile_amzn:
 
 docker/Dockerfile_vault: docker/generate-vault-ca.sh
 
 docker/Dockerfile_%: Dockerfile_%.template docker-compose.yml
 	sed \
 		-e 's|@AMAZONLINUX_VERSION@|$(AMAZONLINUX_VERSION)|g' \
-		-e 's|@GLIDE_VERSION@|$(GLIDE_VERSION)|g' \
 		$< > $@
 	docker-compose build $*|| \
 		(rm -f $@ && exit 1)

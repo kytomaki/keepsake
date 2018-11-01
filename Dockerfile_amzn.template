@@ -21,14 +21,4 @@ ENV GOPATH=/root/go
 RUN mkdir -p $GOPATH/bin
 ENV PATH=$PATH:$GOPATH/bin
 
-# Install glide
-COPY glide-@GLIDE_VERSION@-linux-amd64.tar.gz.sha256sum /tmp
-RUN cd tmp && \
-      wget https://github.com/Masterminds/glide/releases/download/@GLIDE_VERSION@/glide-@GLIDE_VERSION@-linux-amd64.tar.gz && \
-      sha256sum -c glide-@GLIDE_VERSION@-linux-amd64.tar.gz.sha256sum && \
-      tar xzf glide-@GLIDE_VERSION@-linux-amd64.tar.gz && \
-      mv linux-amd64/glide /usr/bin && \
-      rm -rf glide-@GLIDE_VERSION@-linux-amd64.tar.gz linux-amd64 && \
-      chown root:root /usr/bin/glide
-
 # vim: set ft=Dockerfile:
