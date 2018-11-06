@@ -1,4 +1,4 @@
-FROM vault:0.9.5
+FROM vault:1.0.0
 
 COPY generate-vault-ca.sh /
 # vim: set ft=Dockerfile:

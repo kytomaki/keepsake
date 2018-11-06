@@ -1,0 +1,32 @@
+---
+certificates:
+  sets:
+    - cname: certset.keepsake.com
+      vaultrole: keepsake
+      ttl: 10m
+      cert: testdata/keepsake_client.crt
+      key: testdata/keepsake_client.key
+      root: testdata/keepsake_root.pem
+      cmd: 'echo updated certset'
+      tests:
+        cname: certset.keepsake.com
+        cacname: keepsake
+    - cname: certset2.keepsake.com
+      vaultrole: keepsake
+      ttl: 10m
+      cert: testdata/keepsake_client2.crt
+      key: testdata/keepsake_client2.key
+      root: testdata/keepsake_root2.pem
+      cmd: 'echo updated certset2'
+      tests:
+        cname: certset2keepsake.com
+        cacname: keepsake
+    - cname: bundle.keepsake.com
+      vaultrole: keepsake
+      ttl: 10m
+      bundle: testdata/keepsake_bundle.pem
+      key: testdata/keepsake_client.key
+      cmd: 'echo updated bundle'
+      tests:
+        cname: bundle.keepsake.com
+        cacname: keepsake

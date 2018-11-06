@@ -24,6 +24,7 @@ import (
 	"flag"
 	"fmt"
 	vaultAPI "github.com/hashicorp/vault/api"
+	"github.com/hmhco/keepsake/cmd"
 	log "github.com/sirupsen/logrus"
 	openssl "github.com/spacemonkeygo/openssl"
 	"io/ioutil"
@@ -88,6 +89,10 @@ func checkCertExpiration(certFile string, pemFile string, seconds int) bool {
 }
 
 func main() {
+	cmd.Execute()
+}
+
+func keepsake() {
 	vaultPKIPath := flag.String("vault-path", "pki", "Path for pki")
 	vaultRole := flag.String("vault-role", "server", "Role for pki")
 	certCN := flag.String("cn", "", "Certificate common name")
