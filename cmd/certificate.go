@@ -272,26 +272,3 @@ func (bCert *BasicCert) CheckValidity(checks ...func(*BasicCert) (err error)) (e
 	}
 	return errors
 }
-
-// CheckCommonName Validates Certificates CNAME
-func CheckCommonName(cname string) func(*BasicCert) (err error) {
-	return func(bCert *BasicCert) error {
-		if bCert.ClientCertificate.Subject.CommonName != cname {
-			return fmt.Errorf("CNAME wanted: '%s', got: '%s'", cname, bCert.ClientCertificate.Subject.CommonName)
-		}
-		return nil
-	}
-}
-
-// CheckCACommonName tests that the root certificate matches
-func CheckCACommonName(cname string) func(*BasicCert) (err error) {
-	return func(bCert *BasicCert) error {
-		if len(bCert.RootCertificate) == 0 {
-			return ErrEmptyCertificate
-		}
-		if bCert.RootCertificate[0].Subject.CommonName != cname {
-			return fmt.Errorf("CNAME wanted: '%s', got: '%s'", cname, bCert.RootCertificate[0].Subject.CommonName)
-		}
-		return nil
-	}
-}

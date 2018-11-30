@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"os"
 	"reflect"
 	"time"
@@ -13,47 +14,42 @@ import (
 
 // Config represents the keepsake configuration
 type Config struct {
-	Certificates Certificates `mapstructure:"certificates"`
+	Certificates []CertificateConf `mapstructure:"certificates"`
 }
 
-// Certificates contain the managed certifacte sets
-type Certificates struct {
-	Sets []CertificateFileSetConf `mapstructure:"sets"`
-}
-
-// CertificateFileSetConf for CertificateFileSet and tests
-type CertificateFileSetConf struct {
-	CName                 string                   `mapstructure:"cname"`
-	VaultRole             string                   `mapstructure:"vaultrole"`
-	TTL                   time.Duration            `mapstructure:"ttl"`
-	CertificateFile       string                   `mapstructure:"cert"`
-	KeyFile               string                   `mapstructure:"key"`
-	RootCertificateFile   string                   `mapstructure:"root"`
-	BundleCertificateFile string                   `mapstructure:"bundle"`
-	Cmd                   string                   `mapstructure:"cmd"`
-	Tests                 []func(*BasicCert) error `mapstructure:"tests"`
-	ClientKey             crypto.PrivateKey        `mapstructure:"-"`
-	ClientCertificate     x509.Certificate         `mapstructure:"-"`
-	RootCertificate       []x509.Certificate       `mapstructure:"-"`
+// CertificateConf for CertificateFileSet and tests
+type CertificateConf struct {
+	CName                 string                         `mapstructure:"cname"`
+	VaultRole             string                         `mapstructure:"vaultrole"`
+	TTL                   time.Duration                  `mapstructure:"ttl"`
+	CertificateFile       string                         `mapstructure:"cert"`
+	KeyFile               string                         `mapstructure:"key"`
+	RootCertificateFile   string                         `mapstructure:"root"`
+	BundleCertificateFile string                         `mapstructure:"bundle"`
+	Cmd                   string                         `mapstructure:"cmd"`
+	Tests                 []func(*CertificateConf) error `mapstructure:"tests"`
+	ClientKey             crypto.PrivateKey              `mapstructure:"-"`
+	ClientCertificate     x509.Certificate               `mapstructure:"-"`
+	RootCertificate       []x509.Certificate             `mapstructure:"-"`
 }
 
 // ReadFiles read the certificates from defined files
-func (cfset *CertificateFileSetConf) ReadFiles() (err error) {
+func (cert *CertificateConf) ReadFiles() (err error) {
 	// Bundle file is not set
-	if cfset.BundleCertificateFile == "" {
-		cfset.ClientCertificate, err = lastCertFromFile(cfset.CertificateFile)
+	if cert.BundleCertificateFile == "" {
+		cert.ClientCertificate, err = lastCertFromFile(cert.CertificateFile)
 		if err != nil {
 			return
 		}
 		var certs []x509.Certificate
-		certs, err = certificatesFromFile(cfset.RootCertificateFile)
+		certs, err = certificatesFromFile(cert.RootCertificateFile)
 		if err != nil {
 			return
 		}
-		cfset.RootCertificate = certs
+		cert.RootCertificate = certs
 	} else {
 		var certs []x509.Certificate
-		certs, err = certificatesFromFile(cfset.BundleCertificateFile)
+		certs, err = certificatesFromFile(cert.BundleCertificateFile)
 		if err != nil {
 			return
 		}
@@ -62,27 +58,27 @@ func (cfset *CertificateFileSetConf) ReadFiles() (err error) {
 			return ErrEmptyCertificate
 		}
 		// Set the client certificate to last of the loaded certs and the rest to the
-		cfset.ClientCertificate, cfset.RootCertificate = certs[len(certs)-1], certs[:len(certs)-1]
+		cert.ClientCertificate, cert.RootCertificate = certs[len(certs)-1], certs[:len(certs)-1]
 	}
-	cfset.ClientKey, err = privateKeyFromFile(cfset.KeyFile)
+	cert.ClientKey, err = privateKeyFromFile(cert.KeyFile)
 	return
 }
 
 // WriteFiles writes the files to disk
-func (cfset *CertificateFileSetConf) WriteFiles() (err error) {
+func (cert *CertificateConf) WriteFiles() (err error) {
 	var writer *os.File
-	if cfset.BundleCertificateFile == "" {
-		if writer, err = os.OpenFile(cfset.CertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
+	if cert.BundleCertificateFile == "" {
+		if writer, err = os.OpenFile(cert.CertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
 			return
 		}
-		if err = pem.Encode(writer, &pem.Block{Type: "CERTIFICATE", Bytes: cfset.ClientCertificate.Raw}); err != nil {
+		if err = pem.Encode(writer, &pem.Block{Type: "CERTIFICATE", Bytes: cert.ClientCertificate.Raw}); err != nil {
 			return
 		}
 		var rootBytes []byte
-		if rootBytes, err = encodeCerts(cfset.RootCertificate...); err != nil {
+		if rootBytes, err = encodeCerts(cert.RootCertificate...); err != nil {
 			return
 		}
-		if writer, err = os.OpenFile(cfset.RootCertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
+		if writer, err = os.OpenFile(cert.RootCertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
 			return
 		}
 		if _, err = writer.Write(rootBytes); err != nil {
@@ -90,11 +86,11 @@ func (cfset *CertificateFileSetConf) WriteFiles() (err error) {
 		}
 	} else {
 		var bundleBytes []byte
-		certs := append(cfset.RootCertificate, cfset.ClientCertificate)
+		certs := append(cert.RootCertificate, cert.ClientCertificate)
 		if bundleBytes, err = encodeCerts(certs...); err != nil {
 			return
 		}
-		if writer, err = os.OpenFile(cfset.RootCertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
+		if writer, err = os.OpenFile(cert.BundleCertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
 			return
 		}
 		if _, err = writer.Write(bundleBytes); err != nil {
@@ -104,11 +100,11 @@ func (cfset *CertificateFileSetConf) WriteFiles() (err error) {
 			return
 		}
 	}
-	if writer, err = os.OpenFile(cfset.KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600); err != nil {
+	if writer, err = os.OpenFile(cert.KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600); err != nil {
 		return
 	}
 	var der []byte
-	der, err = clientKeyDer(cfset.ClientKey)
+	der, err = clientKeyDer(cert.ClientKey)
 	if err != nil {
 		return
 	}
@@ -125,7 +121,7 @@ func DecodeValidityFuncsHookFunc() mapstructure.DecodeHookFunc {
 			return data, nil
 		}
 		// The slice of functions to contain results
-		var tests []func(*BasicCert) error
+		var tests []func(*CertificateConf) error
 		// test the wanted type
 		if rt != reflect.TypeOf(tests) {
 			return data, nil
@@ -148,4 +144,37 @@ func DecodeValidityFuncsHookFunc() mapstructure.DecodeHookFunc {
 		}
 		return tests, nil
 	}
+}
+
+// CheckCommonName Validates Certificates CNAME
+func CheckCommonName(cname string) func(*CertificateConf) (err error) {
+	return func(bCert *CertificateConf) error {
+		if bCert.ClientCertificate.Subject.CommonName != cname {
+			return fmt.Errorf("CNAME wanted: '%s', got: '%s'", cname, bCert.ClientCertificate.Subject.CommonName)
+		}
+		return nil
+	}
+}
+
+// CheckCACommonName tests that the root certificate matches
+func CheckCACommonName(cname string) func(*CertificateConf) (err error) {
+	return func(bCert *CertificateConf) error {
+		if len(bCert.RootCertificate) == 0 {
+			return ErrEmptyCertificate
+		}
+		if bCert.RootCertificate[0].Subject.CommonName != cname {
+			return fmt.Errorf("CNAME wanted: '%s', got: '%s'", cname, bCert.RootCertificate[0].Subject.CommonName)
+		}
+		return nil
+	}
+}
+
+// CheckValidity runs all the certificate tests
+func (cert *CertificateConf) CheckValidity() (errors []error) {
+	for _, test := range cert.Tests {
+		if err := test(cert); err != nil {
+			errors = append(errors, err)
+		}
+	}
+	return
 }

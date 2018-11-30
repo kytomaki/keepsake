@@ -8,3 +8,6 @@ keepsake
 .glide
 *.rpm
 docker/Dockerfile_*
+testdata/*.crt
+testdata/*.csr
+testdata/*.key
