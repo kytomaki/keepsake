@@ -1,7 +1,7 @@
 ---
-vault_address: https://vault:8200
-vault_token: token
-vault_pki-path: keepsake
+vault_address: http://vault:8200
+vault_token: keepsake-vault-client
+vault_pki-path: pki
 renewal_coefficient: 0.9
 certificates:
   - cname: certset.keepsake.com
@@ -9,36 +9,40 @@ certificates:
       - foo.keepsake.com
     vaultrole: keepsake
     ttl: 10m
-    cert: testdata/keepsake_client.crt
-    key: testdata/keepsake_client.key
-    root: testdata/root.crt
+    cert: docker/keepsake_client.crt
+    key: docker/keepsake_client.key
+    root: docker/root1.crt
     cmd: 'echo updated certset'
     ipaddresses:
       - "127.0.0.1"
+      - "10.10.10.10"
     tests:
       cname: ""
       cacname: keepsake
+      ttl: ""
   - cname: certset2.keepsake.com
     vaultrole: keepsake
-    ttl: 10m
-    cert: testdata/keepsake_client2.crt
-    key: testdata/keepsake_client2.key
-    root: testdata/root.crt
+    ttl: 10s
+    cert: docker/keepsake_client2.crt
+    key: docker/keepsake_client2.key
+    root: docker/root2.crt
     cmd: 'echo updated certset2'
     ipaddresses:
       - "127.0.0.1"
     tests:
       cname: ""
       cacname: keepsake
-  - cname: certset.keepsake.com
+      ttl: ""
+  - cname: certset-bundle.keepsake.com
     vaultrole: keepsake
-    ttl: 10m
-    bundle: testdata/keepsake_client_bundle.pem
-    key: testdata/keepsake_client.key
+    ttl: 15s
+    bundle: docker/keepsake_client_bundle.pem
+    key: docker/keepsake_client.key
     cmd: 'echo updated bundle'
     ipaddresses:
       - "127.0.0.1"
     tests:
       cname: ""
       cacname: keepsake
+      ttl: ""
  

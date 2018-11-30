@@ -21,5 +21,6 @@ ENV GOPATH=/root/go
 RUN mkdir -p $GOPATH/bin
 ENV PATH=$PATH:$GOPATH/bin
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+COPY keepsake.yaml /etc
 
 # vim: set ft=Dockerfile:

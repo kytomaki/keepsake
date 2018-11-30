@@ -8,7 +8,7 @@ vault login keepsake-test
 # Generate root certificate
 vault write pki/root/generate/internal \
 	common_name=keepsake \
-	ttl=60m
+	ttl=600m
 # Update CRL
 vault write pki/config/urls \
 	issuing_certificates="http://vault:8200/v1/pki/ca" \
@@ -18,10 +18,10 @@ vault write pki/roles/keepsake \
 	allowed_domains=keepsake_default \
 	allow_subdomains=true \
 	allow_any_name=true \
-	max_ttl=30s
+	max_ttl=300s
 # issue client token
 (vault token lookup keepsake-vault-client >/dev/null 2>&1 && \
 	echo token already created) || \
 	vault token create \
 		-id=keepsake-vault-client \
-		-ttl=6m
+		-ttl=600m

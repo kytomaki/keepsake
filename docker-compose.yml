@@ -6,10 +6,7 @@ services:
       context: docker
       dockerfile: Dockerfile_amzn
     volumes:
-      - "./:/root/go/src/keepsake"
-    environment:
-      - VAULT_ADDR=http://vault:8200
-      - VAULT_TOKEN=keepsake-vault-client
+      - "./:/root/go/src/github.com/hmhco/keepsake"
   vault:
     build:
       context: docker

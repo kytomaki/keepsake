@@ -176,25 +176,6 @@
   version = "v1.2.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:74aa99ef18406ebfdedfb2a07b9a01f9ff2b6d2547b27b33fcdf1007223d75cc"
-  name = "github.com/spacemonkeygo/openssl"
-  packages = [
-    ".",
-    "utils",
-  ]
-  pruneopts = "UT"
-  revision = "c2dcc5cca94ac8f7f3f0c20e20050d4cce9d9730"
-
-[[projects]]
-  branch = "master"
-  digest = "1:d6956eb95db39859627c18e1dd425b2ddd1a0d6000b643a4d4ada8fc887c1e09"
-  name = "github.com/spacemonkeygo/spacelog"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "2296661a0572a51438413369004fa931c2641923"
-
-[[projects]]
   digest = "1:6a4a11ba764a56d2758899ec6f3848d24698d48442ebce85ee7a3f63284526cd"
   name = "github.com/spf13/afero"
   packages = [
@@ -323,7 +304,6 @@
     "github.com/hashicorp/vault/api",
     "github.com/mitchellh/mapstructure",
     "github.com/sirupsen/logrus",
-    "github.com/spacemonkeygo/openssl",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
   ]
