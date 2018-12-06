@@ -21,6 +21,8 @@ type Config struct {
 	Token              string  `mapstructure:"vault_token"`
 	PKIPath            string  `mapstructure:"vault_pki-path"`
 	RenewalCoefficient float64 `mapstructure:"renewal_coefficient"`
+	LogType            string  `mapstructure:"log_type"`
+	LogLevel           string  `mapstructure:"log_level"`
 }
 
 // CertificateConf for Certificate and tests

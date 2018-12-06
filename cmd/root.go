@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/mitchellh/mapstructure"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -41,6 +42,8 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/keepsake.yaml)")
+	// allow overriding log level on command line
+	rootCmd.PersistentFlags().String("log-level", "info", "log level to use (trace|debug|info|warning|error|fatal|panic)")
 
 }
 
@@ -68,8 +71,32 @@ func initConfig() {
 		// Custom Decode Hook Function to parse validity tests
 		DecodeValidityFuncsHookFunc(),
 	))
+	if err := viper.BindPFlag("log_level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+		fmt.Printf("parsing log-level flag wrong: %s", err)
+		os.Exit(1)
+	}
 	if err := viper.Unmarshal(&Conf, opt); err != nil {
 		fmt.Printf("Error reading '%s', config problem: %v", viper.ConfigFileUsed(), err)
 	}
+	initLogging()
+}
 
+func initLogging() {
+	switch Conf.LogType {
+	case "json":
+		formatter := &log.JSONFormatter{
+			FieldMap: log.FieldMap{
+				log.FieldKeyTime:  "@timestamp",
+				log.FieldKeyLevel: "@level",
+				log.FieldKeyMsg:   "@message",
+			}}
+		log.SetFormatter(formatter)
+	}
+	level, err := log.ParseLevel(Conf.LogLevel)
+	if err != nil {
+		log.Warnf("Unable to parse loglevel, error: %s", err)
+		log.SetLevel(log.InfoLevel)
+	} else {
+		log.SetLevel(level)
+	}
 }
