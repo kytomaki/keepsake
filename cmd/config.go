@@ -13,6 +13,15 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+var (
+	// Version of keepsake
+	Version = "Undefined"
+	// BuildDate of keepsake
+	BuildDate = "Undefined"
+	// Commit of build
+	Commit = "Undefined"
+)
+
 // Config represents the keepsake configuration
 type Config struct {
 	Certificates []*CertificateConf `mapstructure:"certificates"`

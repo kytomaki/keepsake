@@ -11,7 +11,7 @@ all: bin/$(PACKAGE)
 bin/$(PACKAGE): vendor
 	go build \
 		-tags release \
-		-ldflags '-X main.version=$(VERSION) -X main.buildDate=$(DATE) -X main.commit=$(COMMIT)' \
+		-ldflags '-X github.com/hmhco/keepsake/cmd.Version=$(VERSION) -X github.com/hmhco/keepsake/cmd.BuildDate=$(DATE) -X github.com/hmhco/keepsake/cmd.Commit=$(COMMIT)' \
 		-o bin/$(PACKAGE) main.go
 
 # Dependency management

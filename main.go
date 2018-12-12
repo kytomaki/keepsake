@@ -22,12 +22,6 @@ import (
 	"github.com/hmhco/keepsake/cmd"
 )
 
-var (
-	version   = "Undefined"
-	buildDate = "Undefined"
-	commit    = "Undefined"
-)
-
 func main() {
 	cmd.Execute()
 }
