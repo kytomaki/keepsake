@@ -121,25 +121,42 @@ func privateKeyFromFile(fileName string) (key crypto.PrivateKey, err error) {
 	return privateKeyFromReader(reader)
 }
 
-func clientKeyDer(cKey crypto.PrivateKey) (der []byte, err error) {
-	// TODO: Add support for multiple key types
-	switch cKey.(type) {
-	case *rsa.PrivateKey:
-		rsaKey := cKey.(*rsa.PrivateKey)
-		der = x509.MarshalPKCS1PrivateKey(rsaKey)
-	default:
-		err = fmt.Errorf("Unknown private key type: %T", cKey)
+func pemEncode(pemType string, pemBytes []byte) (encoded []byte, err error) {
+	buf := new(bytes.Buffer)
+	block := &pem.Block{
+		Type:  pemType,
+		Bytes: pemBytes,
 	}
+	err = pem.Encode(buf, block)
+	encoded = buf.Bytes()
 	return
 }
 
+func encodePrivateKey(cKey crypto.PrivateKey) (encoded []byte, err error) {
+	var der []byte
+	var pemType string
+	switch cKey.(type) {
+	case *rsa.PrivateKey:
+		pemType = "RSA PRIVATE KEY"
+	case *ecdsa.PrivateKey:
+		pemType = "ECDSA PRIVATE KEY"
+	default:
+		err = fmt.Errorf("Unknown private key type: %T", cKey)
+		return
+	}
+	if der, err = x509.MarshalPKCS8PrivateKey(cKey); err != nil {
+		return
+	}
+	return pemEncode(pemType, der)
+}
+
 func encodeCerts(certs ...x509.Certificate) (b []byte, err error) {
-	buf := new(bytes.Buffer)
 	for _, cert := range certs {
-		if err = pem.Encode(buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
+		var certBytes []byte
+		if certBytes, err = pemEncode("CERTIFICATE", cert.Raw); err != nil {
 			return
 		}
-		b = append(b, buf.Bytes()...)
+		b = append(b, certBytes...)
 	}
 	return
 }

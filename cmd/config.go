@@ -3,7 +3,6 @@ package cmd
 import (
 	"crypto"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"os"
 	"os/exec"
@@ -52,21 +51,14 @@ type CertificateConf struct {
 	IPAddresses           []string                       `mapstructure:"ipaddresses"`
 }
 
+func (cconf *CertificateConf) isCertificateBundle() bool {
+	return cconf.BundleCertificateFile != ""
+}
+
 // ReadFiles read the certificates from defined files
 func (cconf *CertificateConf) ReadFiles() (err error) {
 	// Bundle file is not set
-	if cconf.BundleCertificateFile == "" {
-		cconf.ClientCertificate, err = lastCertFromFile(cconf.CertificateFile)
-		if err != nil {
-			return
-		}
-		var certs []x509.Certificate
-		certs, err = certificatesFromFile(cconf.RootCertificateFile)
-		if err != nil {
-			return
-		}
-		cconf.RootCertificate = certs
-	} else {
+	if cconf.isCertificateBundle() {
 		var certs []x509.Certificate
 		certs, err = certificatesFromFile(cconf.BundleCertificateFile)
 		if err != nil {
@@ -78,57 +70,69 @@ func (cconf *CertificateConf) ReadFiles() (err error) {
 		}
 		// Set the client certificate to last of the loaded certs and the rest to the
 		cconf.ClientCertificate, cconf.RootCertificate = certs[len(certs)-1], certs[:len(certs)-1]
+	} else {
+		cconf.ClientCertificate, err = lastCertFromFile(cconf.CertificateFile)
+		if err != nil {
+			return
+		}
+		var certs []x509.Certificate
+		certs, err = certificatesFromFile(cconf.RootCertificateFile)
+		if err != nil {
+			return
+		}
+		cconf.RootCertificate = certs
 	}
 	cconf.ClientKey, err = privateKeyFromFile(cconf.KeyFile)
 	return
 }
 
+// WriteFile writes contents to name with given mode
+func WriteFile(name string, contents []byte, mode os.FileMode) (err error) {
+	var writer *os.File
+	if writer, err = os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode); err != nil {
+		return
+	}
+	if _, err = writer.Write(contents); err != nil {
+		return
+	}
+	err = writer.Close()
+	return
+}
+
+// WriteCertificates writes certs to name
+func WriteCertificates(name string, certs ...x509.Certificate) (err error) {
+	var certBytes []byte
+	if certBytes, err = encodeCerts(certs...); err != nil {
+		return
+	}
+	return WriteFile(name, certBytes, 0644)
+}
+
+// WritePrivateKey writes key to name
+func WritePrivateKey(name string, key crypto.PrivateKey) (err error) {
+	var keyBytes []byte
+	if keyBytes, err = encodePrivateKey(key); err != nil {
+		return
+	}
+	return WriteFile(name, keyBytes, 0600)
+}
+
 // WriteFiles writes the files to disk
 func (cconf *CertificateConf) WriteFiles() (err error) {
-	var writer *os.File
-	if cconf.BundleCertificateFile == "" {
-		if writer, err = os.OpenFile(cconf.CertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
-			return
-		}
-		if err = pem.Encode(writer, &pem.Block{Type: "CERTIFICATE", Bytes: cconf.ClientCertificate.Raw}); err != nil {
-			return
-		}
-		var rootBytes []byte
-		if rootBytes, err = encodeCerts(cconf.RootCertificate...); err != nil {
-			return
-		}
-		if writer, err = os.OpenFile(cconf.RootCertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
-			return
-		}
-		if _, err = writer.Write(rootBytes); err != nil {
+	if cconf.isCertificateBundle() {
+		certs := append(cconf.RootCertificate, cconf.ClientCertificate)
+		if err = WriteCertificates(cconf.BundleCertificateFile, certs...); err != nil {
 			return
 		}
 	} else {
-		var bundleBytes []byte
-		certs := append(cconf.RootCertificate, cconf.ClientCertificate)
-		if bundleBytes, err = encodeCerts(certs...); err != nil {
+		if err = WriteCertificates(cconf.CertificateFile, cconf.ClientCertificate); err != nil {
 			return
 		}
-		if writer, err = os.OpenFile(cconf.BundleCertificateFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644); err != nil {
-			return
-		}
-		if _, err = writer.Write(bundleBytes); err != nil {
-			return
-		}
-		if err = writer.Close(); err != nil {
+		if err = WriteCertificates(cconf.RootCertificateFile, cconf.RootCertificate...); err != nil {
 			return
 		}
 	}
-	if writer, err = os.OpenFile(cconf.KeyFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600); err != nil {
-		return
-	}
-	var der []byte
-	der, err = clientKeyDer(cconf.ClientKey)
-	if err != nil {
-		return
-	}
-	err = pem.Encode(writer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: der})
-	err = writer.Close()
+	err = WritePrivateKey(cconf.KeyFile, cconf.ClientKey)
 	return
 }
 
