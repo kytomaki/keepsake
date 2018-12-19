@@ -60,6 +60,8 @@ integration-test: all
 
 .PHONY: docker-integration-test
 docker-integration-test: docker/Dockerfile_amzn docker/Dockerfile_vault
+	@echo Running docker integration test against dockerized vault
+	@echo The log lines should not report any errors
 	docker-compose up -d vault
 	docker-compose exec -T vault sh /generate-vault-ca.sh
 	docker-compose run amzn bash -c 'make -C /root/go/src/github.com/hmhco/keepsake integration-test'
