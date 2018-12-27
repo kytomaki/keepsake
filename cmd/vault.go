@@ -22,6 +22,11 @@ func renewDuration(seconds int, renewalCoefficient float64) time.Duration {
 	return time.Duration(float64(seconds*int(time.Second)) * renewalCoefficient)
 }
 
+// MultipliedDuration returns the Duration multiplied by float
+func MultipliedDuration(duration time.Duration, multiplier float64) (multipliedDuration time.Duration) {
+	return time.Duration(float64(duration) * multiplier)
+}
+
 //GetVaultClient returns an active vault client
 func GetVaultClient() (vc *vaultAPI.Client, err error) {
 	once.Do(func() {

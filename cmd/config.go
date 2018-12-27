@@ -157,6 +157,8 @@ func DecodeValidityFuncsHookFunc() mapstructure.DecodeHookFunc {
 				tests = append(tests, CheckCommonName())
 			case "cacname":
 				tests = append(tests, CheckCACommonName(vs))
+			case "ttl":
+				tests = append(tests, CheckTTL())
 			default:
 				return nil, fmt.Errorf("unknown validity function: %s", ks)
 			}
@@ -183,6 +185,21 @@ func CheckCACommonName(cname string) func(*CertificateConf) (err error) {
 		}
 		if bCert.RootCertificate[0].Subject.CommonName != cname {
 			return RecoverableKeepsakeError(fmt.Sprintf("CNAME wanted: '%s', got: '%s'", cname, bCert.RootCertificate[0].Subject.CommonName))
+		}
+		return nil
+	}
+}
+
+// CheckTTL returns function to test if Certificate's ttl is still valid
+func CheckTTL() func(*CertificateConf) (err error) {
+	return func(certConf *CertificateConf) error {
+		certs := append(certConf.RootCertificate, certConf.ClientCertificate)
+		for _, cert := range certs {
+			certDuration := cert.NotAfter.Sub(cert.NotBefore)
+			thresholdTime := cert.NotBefore.Add(MultipliedDuration(certDuration, Conf.RenewalCoefficient))
+			if time.Now().After(thresholdTime) {
+				return RecoverableKeepsakeError(fmt.Sprintf("certificate expiration time %s, is too close to threshold %s", cert.NotAfter, thresholdTime))
+			}
 		}
 		return nil
 	}
