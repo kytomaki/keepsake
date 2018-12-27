@@ -27,7 +27,13 @@ vendor: Gopkg.lock
 .PHONY: package
 package: bin/$(PACKAGE)
 	cd /root/go/src/keepsake
-	fpm -s dir -t rpm -n $(PACKAGE) -v $(VERSION) --prefix /usr/local bin/keepsake
+	fpm \
+		-s dir \
+		-t rpm \
+		-n $(PACKAGE) \
+		-v $(VERSION) \
+		--prefix /usr/local \
+		bin/keepsake
 
 .PHONY: amzn
 amzn: docker/Dockerfile_amzn
