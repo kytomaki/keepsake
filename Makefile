@@ -33,7 +33,7 @@ package: bin/$(PACKAGE)
 		-n $(PACKAGE) \
 		-v $(VERSION) \
 		--prefix /usr/local \
-		bin/keepsake
+		$^
 
 .PHONY: amzn
 amzn: docker/Dockerfile_amzn
