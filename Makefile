@@ -26,7 +26,7 @@ vendor: Gopkg.lock
 # Packaging
 .PHONY: package
 package: bin/$(PACKAGE)
-	cd /root/go/src/keepsake
+	cd /root/go/src/github.com/hmhco/keepsake
 	fpm \
 		-s dir \
 		-t rpm \
@@ -37,7 +37,7 @@ package: bin/$(PACKAGE)
 
 .PHONY: amzn
 amzn: docker/Dockerfile_amzn
-	docker-compose run amzn bash -c 'make -C /root/go/src/keepsake clean package'
+	docker-compose run amzn bash -c 'make -C /root/go/src/github.com/hmhco/keepsake clean package'
 
 # Addtional dependencies needed for building docker image
 docker/Dockerfile_amzn:
