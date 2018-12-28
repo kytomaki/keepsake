@@ -1,0 +1,47 @@
+---
+# Examplae configuration for keepsake
+#
+# Address of vault server
+#
+vault_address: http://vault:8200
+# token to access vault
+vault_token: keepsake-vault-client
+# Path to pki endpoint
+vault_pki-path: pki
+# Renewal coefficient. Multiplier to determine when certificates should be renewed. This should be under 1.0
+renewal_coefficient: 0.9
+# log level to use
+log_level: info
+# log type to use
+log_type: json
+# Certificates to watch for
+# certificates:
+# - cname: certset.keepsake.com
+#   altnames:
+#   - foo.keepsake.com
+#   vaultrole: keepsake
+#   ttl: 10m
+#   cert: docker/keepsake_client.crt
+#   key: docker/keepsake_client.key
+#   root: docker/root1.crt
+#   cmd: 'echo updated certset'
+#   ipaddresses:
+#     - "127.0.0.1"
+#     - "10.10.10.10"
+#   tests:
+#     cname: ""
+#     cacname: keepsake
+#     ttl: ""
+# - cname: certset-bundle.keepsake.com
+#   vaultrole: keepsake
+#   ttl: 15s
+#   bundle: docker/keepsake_client_bundle.pem
+#   key: docker/keepsake_client.key
+#   cmd: 'echo updated bundle'
+#   ipaddresses:
+#     - "127.0.0.1"
+#   tests:
+#     cname: ""
+#     cacname: keepsake
+#     ttl: ""
+ 

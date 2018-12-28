@@ -1,0 +1,7 @@
+# These environment variables override configuration values
+#
+## vault servers address
+# VAULT_ADDRESS="http://vault:8200"
+#
+## vault token to use
+# VAULT_TOKEN="bar"
